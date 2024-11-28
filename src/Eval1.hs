@@ -85,7 +85,7 @@ evalExp (Not        e)  = evalUnary     not e
 evalExp (Lt     e0 e1)  = evalBin (<)   e0 e1
 evalExp (Gt     e0 e1)  = evalBin (>)   e0 e1
 evalExp (And    e0 e1)  = evalBin (&&)  e0 e1
-evalExp (Or     e0 e1)  = evalBin (&&)  e0 e1
+evalExp (Or     e0 e1)  = evalBin (||)  e0 e1
 evalExp (Eq     e0 e1)  = evalBin (==)  e0 e1
 evalExp (NEq    e0 e1)  = evalBin (/=)  e0 e1
 
@@ -101,10 +101,11 @@ evalUnary :: MonadState m => (a -> b) -> Exp a -> m b
 evalUnary op e = do v <- evalExp e 
                     return $ op v
 
-varUpdate :: MonadState m => String -> (a -> b) -> m b
+varUpdate :: MonadState m => String -> (Int -> Int) -> m Int
 varUpdate s f = do  v <- lookfor s
-                    update s (f v)
-                    return $ f v
+                    let fv = f v
+                    update s fv
+                    return fv
 
 {-
 
