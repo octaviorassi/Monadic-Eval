@@ -28,8 +28,8 @@ pExp (And a b     ) = pExp a <+> text "&&" <+> pExp b
 pExp (Or  a b     ) = pExp a <+> text "||" <+> pExp b
 pExp (Not b       ) = text "!" <+> pExp b
 -- Ejercicio 2
-pExp (EAssgn x  e ) = parens $ pVar x <+> text "=" <+> pExp e
-pExp (ESeq   e1 e2) = pExp e1 <> comma <+> pExp e2
+pExp (VarInc s    ) = pVar s <+> text "++"
+pExp (VarDec s    ) = pVar s <+> text "--"
 
 pComm :: Comm -> Doc
 pComm Skip        = text "skip"
