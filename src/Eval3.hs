@@ -15,6 +15,7 @@ import           Control.Monad                  ( liftM
 
 -- Entornos
 type Env = M.Map Variable Int
+type Trace = String
 
 -- Entorno nulo
 initEnv :: Env
@@ -24,6 +25,55 @@ initEnv = M.empty
 -- lleve una traza de ejecución (además de manejar errores y estado).
 -- y dar su instancia de mónada. Llamarla |StateErrorTrace|. 
 -- COMPLETAR
+
+-- Definamos los transformers ErrorT, StateT y TraceT
+newtype ErrorT  e m a  = ErrorT  { runErrorT   :: m (Either e a    )}
+newtype WriterT w m a  = WriterT { runWriterT  :: m (Pair a w      )}
+newtype StateT  s m a  = StateT  { runStateT   :: m (s -> Pair a s )} -- Esto es medio inutil en realidad, la m deberia aplicar al pair
+
+
+-- Env -> Pair (Either Error (Pair a Trace)) Env
+type StateErrorTrace a = WriterT Trace (ErrorT Error (StateT Env Identity)) a
+
+instance Monad m => Monad (ErrorT e m) where
+  return a  = ErrorT $  return (Right a)
+  m >>=  f  = ErrorT $  runErrorT m >>= \eith ->
+                        case eith of
+                          Left  e ->  return $ Left  e
+                          Right a ->  runErrorT (f a) >>= \eith' ->
+                                      case eith' of
+                                        Left  e -> return $ Left  e
+                                        Right b -> return $ Right b 
+
+instance (Monad m, Monoid w) => Monad (WriterT e w) where
+  return a  = WriterT $ return (a :!: mempty)
+  m >>=  f  = WriterT $ runWriterT m      >>= \(a :!: w)  ->
+                        runWriterT (f a)  >>= \(b :!: w') ->
+                        return (b :!: w mappend w')
+
+instance Monad m => Monad (StateT s m) where
+  return a = StateT $ return (\s -> (a :!: s))
+  m >>=  f = StateT $ (\s ->  runStateT m    >>= \h ->
+                              let (a :!: s') = h s
+                              in  runStateT (f a) >>= \g ->
+                                  g s')   
+
+instance MonadTrans (StateT s) where
+  -- Monad m => m a -> StateT s m a
+  lift ma = ma >>= \a ->
+            return a
+
+
+instance MonadTrans (ErrorT e) where
+  -- Monad m => m a -> ErrorT e m a
+  lift ma = ma >>= \a ->
+            return a
+
+instance MonadTrans (WriterT s) where
+  -- Monad m => m a -> WriterT w m a
+  lift ma = ma >>= \a ->
+            return a
+
 
 -- Recuerde agregar las siguientes instancias para calmar al GHC:
 -- instance Functor StateErrorTrace where
